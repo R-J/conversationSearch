@@ -3,7 +3,10 @@ $PluginInfo['searchMessages'] = [
     'Name' => 'Search Messages',
     'Description' => 'Allows searching in messages.',
     'Version' => '0.1',
-    'RequiredApplications' => ['Vanilla' => '>= 2.3'],
+    'RequiredApplications' => [
+        'Vanilla' => '>= 2.3',
+        'Conversations' => '>= 2.3'
+    ],
     'SettingsPermission' => 'Garden.Settings.Manage',
     // 'SettingsUrl' => '/dashboard/settings/searchmessages',
     // 'RegisterPermissions' => ['searchmessages.Add'],
@@ -31,7 +34,6 @@ class SearchMessagesPlugin extends Gdn_Plugin {
     }
 
     public function messagesController_render_before($sender) {
-$this->structure();
         // Don't show module if we are already on the search page.
         if ($sender->RequestMethod == 'search') {
             return;
@@ -92,7 +94,8 @@ $this->structure();
             $sender->Form->addError($Ex);
             $resultSet = [];
         }
-decho($resultSet);
+
+        $sender->setData('Results', $resultSet);
 
         /*
         // Build a pager

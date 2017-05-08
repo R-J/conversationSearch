@@ -45,9 +45,6 @@ class SearchMessagesModel extends SearchModel {
 
         $this->_SearchMode = $SearchMode;
 
-        $this->EventArguments['Search'] = $Search;
-        $this->fireEvent('Search');
-
         if (count($this->_SearchSql) == 0) {
             return array();
         }
@@ -61,8 +58,6 @@ class SearchMessagesModel extends SearchModel {
             ->getSelect();
 
         $Sql = str_replace($this->Database->DatabasePrefix.'_TBL_', "(\n".implode("\nunion all\n", $this->_SearchSql)."\n)", $Sql);
-
-        $this->fireEvent('AfterBuildSearchQuery');
 
         if ($this->_SearchMode == 'like') {
             $Search = '%'.$Search.'%';

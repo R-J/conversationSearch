@@ -12,6 +12,8 @@
 
 <?php
 
+decho($this->data('Results'));
+
 /*
 Ignore mine [ ]
 From Users [____________]
