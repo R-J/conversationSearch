@@ -15,6 +15,21 @@ $PluginInfo['searchMessages'] = [
 ];
 
 class SearchMessagesPlugin extends Gdn_Plugin {
+    public function setup() {
+        $this->structure();
+    }
+
+    public function structure() {
+        Gdn::sql()
+            ->table('Conversation')
+            ->column('Subject', 'varchar(255)', null, 'fulltext')
+            ->set();
+        Gdn::sql()
+            ->table('ConversationMessage')
+            ->column('Body', 'text', false, 'fulltext')
+            ->set();
+    }
+
     public function messagesController_render_before($sender) {
         // Don't show module if we are already on the search page.
         if ($sender->RequestMethod == 'search') {
@@ -58,17 +73,9 @@ class SearchMessagesPlugin extends Gdn_Plugin {
         list($offset, $limit) = offsetLimit($page, c('Garden.Search.PerPage', 20));
         $sender->setData('_Limit', $limit);
 
+        // $searchModel = new SearchModel();
         $searchModel = new SearchMessagesModel();
-        /*
-        $searchModel->addMatchSql(
-            Gdn::sql()
-                ->select('cm.InsertUserID, cm.Body')
-                ->from('ConversationMessage cm')
-                ->where('cm.InsertUserID', Gdn::session()->UserID)
-            ,
-            'cm.InsertUserID, cm.Body'
-        );
-        */
+        $searchModel->addSearch($this->messageSql($searchModel));
 
         $mode = val('Mode', $formValues);
         if ($mode) {
@@ -104,5 +111,39 @@ decho($resultSet);
 
         // Render view
         $sender->render();
+    }
+
+
+
+
+
+    public function messageSql($searchModel, $addMatch = true) {
+        // Restrict to own conversations!
+        if ($addMatch) {
+            // Build search part of query
+            $searchModel->addMatchSql($searchModel->SQL, 'cm.Body', 'cm.DateInserted');
+        }
+
+        // Build base query
+        $searchModel->SQL
+            ->select('cm.MessageID as PrimaryID, c.Subject as Title, cm.Body as Summary, cm.Format')
+            ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", "concat", 'Url')
+            ->select('cm.DateInserted')
+            ->select('cm.InsertUserID as UserID')
+            ->select("'Message'", '', 'RecordType')
+            ->from('ConversationMessage cm')
+            ->join('Conversation c', 'c.ConversationID = cm.ConversationID');
+
+        if ($addMatch) {
+            // Exectute query
+            $result = $searchModel->SQL->getSelect();
+
+            // Unset SQL
+            $searchModel->SQL->reset();
+        } else {
+            $result = $searchModel->SQL;
+        }
+
+        return $result;
     }
 }
