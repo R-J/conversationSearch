@@ -20,17 +20,18 @@ class SearchMessagesPlugin extends Gdn_Plugin {
     }
 
     public function structure() {
-        Gdn::sql()
+        Gdn::structure()
             ->table('Conversation')
             ->column('Subject', 'varchar(255)', null, 'fulltext')
             ->set();
-        Gdn::sql()
+        Gdn::structure()
             ->table('ConversationMessage')
             ->column('Body', 'text', false, 'fulltext')
             ->set();
     }
 
     public function messagesController_render_before($sender) {
+$this->structure();
         // Don't show module if we are already on the search page.
         if ($sender->RequestMethod == 'search') {
             return;
