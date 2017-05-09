@@ -16,21 +16,81 @@ $PluginInfo['conversationSearch'] = [
 ];
 
 class ConversationSearchPlugin extends Gdn_Plugin {
+    /**
+     * [setup description]
+     * @return [type] [description]
+     */
     public function setup() {
         $this->structure();
     }
 
+    /**
+     * [structure description]
+     * @return [type] [description]
+     */
     public function structure() {
-        Gdn::structure()
+        $versionInfo = explode('.', Gdn::sql()->version());
+        $px = Gdn::database()->DatabasePrefix;
+
+        $tables = [
+            ['Name' => 'Conversation', 'FulltextColumn' => 'Subject'],
+            ['Name' => 'ConversationMessage', 'FulltextColumn' => 'Body']
+        ];
+
+        foreach($tables as $table) {
+            $tableName = Gdn::database()->DatabasePrefix.$table['Name'];
+            $tableName = Gdn::sql()->formatTableName($tableName);
+
+            // InnoDB in MySQL < 5.6 doesn't support fulltext, so force MyISAM.
+            if (!($versionInfo[0] >= 5 && $versionInfo[1] >= 6)) {
+                $sql = "ALTER TABLE `{$tableName}` ENGINE = MyISAM; ";
+                Gdn::structure()->query($sql);
+            }
+            // Get all indexes of current table.
+            $indexes = Gdn::structure()
+                ->query("SHOW INDEXES FROM `{$tableName}`")
+                ->resultObject();
+            // Loop through indexes to determine of column already has fulltext index.
+            $indexExists = false;
+            foreach($indexes as $index) {
+                if (
+                    $index->Column_name == $table['FulltextColumn'] &&
+                    $index->Index_type == 'FULLTEXT'
+                ) {
+                    $indexExists = true;
+                }
+            }
+            if (!$indexExists) {
+                $keyName = "TX_{$table['Name']}_ConversationSearch";
+                $sql = "ALTER TABLE `{$tableName}` ";
+                $sql .= "ADD FULLTEXT $keyName (`{$table['FulltextColumn']}`); ";
+                Gdn::structure()->query($sql);
+            }
+        }
+
+
+        return;
+        /**
+         * The Easiest way isn't working because InnoDBs fulltext
+         * capabilities are not supported  yet.
+         */
+        /*
+        Gdn::database()->structure()
             ->table('Conversation')
             ->column('Subject', 'varchar(255)', null, 'fulltext')
             ->set();
-        Gdn::structure()
+        Gdn::database()->structure()
             ->table('ConversationMessage')
             ->column('Body', 'text', false, 'fulltext')
             ->set();
+        */
     }
 
+    /**
+     * [messagesController_render_before description]
+     * @param  [type] $sender [description]
+     * @return [type]         [description]
+     */
     public function messagesController_render_before($sender) {
         // Don't show module if we are already on the search page.
         if ($sender->RequestMethod == 'search') {
@@ -40,6 +100,12 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         $sender->addModule($conversationSearchModule);
     }
 
+    /**
+     * [messagesController_search_create description]
+     * @param  [type] $sender [description]
+     * @param  [type] $args   [description]
+     * @return [type]         [description]
+     */
     public function messagesController_search_create($sender, $args) {
         // Gdn_Theme::section('SearchResults');
         Gdn_Theme::section('Conversation');
@@ -115,10 +181,12 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         $sender->render();
     }
 
-
-
-
-
+    /**
+     * [conversationSql description]
+     * @param  [type]  $searchModel [description]
+     * @param  boolean $addMatch    [description]
+     * @return [type]               [description]
+     */
     public function conversationSql($searchModel, $addMatch = true) {
         // Restrict to own conversations!
         if ($addMatch) {
