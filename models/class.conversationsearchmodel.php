@@ -1,6 +1,6 @@
 <?php
 
-class SearchMessagesModel extends SearchModel {
+class ConversationSearchModel extends SearchModel {
     /**
      *
      *

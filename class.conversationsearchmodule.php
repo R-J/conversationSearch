@@ -1,5 +1,5 @@
 <?php
-class SearchMessagesModule extends Gdn_Module {
+class ConversationSearchModule extends Gdn_Module {
     public function __construct($sender = '') {
         parent::__construct($sender);
     }
@@ -10,8 +10,8 @@ class SearchMessagesModule extends Gdn_Module {
 
     public function toString() {
         $this->Form = new Gdn_Form();
-        echo '<div class="Box BoxSearchMessages">';
-        echo '<h4>Search in Messages</h4>';
+        echo '<div class="Box BoxConversationSearch">';
+        echo '<h4>'.t('Search in Conversations').'</h4>';
         echo $this->Form->open(['action' => 'search', 'method' => 'post']);
         echo $this->Form->textBox('Search', ['aria-label' => t('Enter your search term.'), 'class' => 'InputBox']);
         echo $this->Form->button('Search', ['aria-label' => t('Search'), 'Name' => '']);

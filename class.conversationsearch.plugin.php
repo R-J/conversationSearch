@@ -1,15 +1,13 @@
 <?php
-$PluginInfo['searchMessages'] = [
-    'Name' => 'Search Messages',
-    'Description' => 'Allows searching in messages.',
-    'Version' => '0.1',
+$PluginInfo['conversationSearch'] = [
+    'Name' => 'Conversation Search',
+    'Description' => 'Allows searching in conversations.',
+    'Version' => '0.1.0',
     'RequiredApplications' => [
         'Vanilla' => '>= 2.3',
         'Conversations' => '>= 2.3'
     ],
     'SettingsPermission' => 'Garden.Settings.Manage',
-    // 'SettingsUrl' => '/dashboard/settings/searchmessages',
-    // 'RegisterPermissions' => ['searchmessages.Add'],
     'MobileFriendly' => true,
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
@@ -17,7 +15,7 @@ $PluginInfo['searchMessages'] = [
     'License' => 'MIT'
 ];
 
-class SearchMessagesPlugin extends Gdn_Plugin {
+class ConversationSearchPlugin extends Gdn_Plugin {
     public function setup() {
         $this->structure();
     }
@@ -38,8 +36,8 @@ class SearchMessagesPlugin extends Gdn_Plugin {
         if ($sender->RequestMethod == 'search') {
             return;
         }
-        $searchMessagesModule = new SearchMessagesModule();
-        $sender->addModule($searchMessagesModule);
+        $conversationSearchModule = new ConversationSearchModule();
+        $sender->addModule($conversationSearchModule);
     }
 
     public function messagesController_search_create($sender, $args) {
@@ -47,15 +45,15 @@ class SearchMessagesPlugin extends Gdn_Plugin {
         Gdn_Theme::section('Conversation');
 
         // Basic page setup.
-        $sender->title(t('Search Messages'));
+        $sender->title(t('Search Conversations'));
         $sender->addBreadcrumb('Search', '/messages/search');
-        $sender->View = $sender->fetchViewLocation('searchmessages', '', 'plugins/searchMessages');
+        $sender->View = $sender->fetchViewLocation('conversationsearch', '', 'plugins/conversationSearch');
 
         // Deliver json data if necessary
         if ($sender->deliveryType() != DELIVERY_TYPE_ALL) {
             $sender->setJson('LessRow', $sender->Pager->toString('less'));
             $sender->setJson('MoreRow', $sender->Pager->toString('more'));
-            $sender->View = 'searchmessages';
+            $sender->View = 'conversationsearch';
         }
 
         $formValues = $sender->Request->post();
@@ -77,8 +75,8 @@ class SearchMessagesPlugin extends Gdn_Plugin {
         $sender->setData('_Limit', $limit);
 
         // $searchModel = new SearchModel();
-        $searchModel = new SearchMessagesModel();
-        $searchModel->addSearch($this->messageSql($searchModel));
+        $searchModel = new ConversationSearchModel();
+        $searchModel->addSearch($this->conversationSql($searchModel));
 
         $mode = val('Mode', $formValues);
         if ($mode) {
@@ -121,7 +119,7 @@ class SearchMessagesPlugin extends Gdn_Plugin {
 
 
 
-    public function messageSql($searchModel, $addMatch = true) {
+    public function conversationSql($searchModel, $addMatch = true) {
         // Restrict to own conversations!
         if ($addMatch) {
             // Build search part of query
