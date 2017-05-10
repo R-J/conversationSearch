@@ -15,62 +15,28 @@ class ConversationSearchModel extends SearchModel {
         if (trim($search) == '') { // || count($this->_SearchSql) == 0) {
             return [];
         }
-
-        if (strlen($search) <= 4) {
-            $searchMode = 'like';
-        } else {
-            // Figure out the exact search mode.
-            if ($this->ForceSearchMode) {
-                $searchMode = $this->ForceSearchMode;
-            } else {
-                $searchMode = strtolower(c('Garden.Search.Mode', 'matchboolean'));
-            }
-
-            if ($searchMode == 'matchboolean') {
-                if (strpos($search, '+') !== false || strpos($search, '-') !== false) {
-                    $searchMode = 'boolean';
-                } else {
-                    $searchMode = 'match';
-                }
-            }
-
-            if ($ForceDatabaseEngine = c('Database.ForceStorageEngine')) {
-                if (strcasecmp($ForceDatabaseEngine, 'myisam') != 0) {
-                    $searchMode = 'like';
-                }
-            }
-        }
-        $this->_SearchMode = $searchMode;
+        $searchMode = strtolower(c('Conversation.Search.Mode', 'matchboolean'));
 
         // Perform the search by unioning all of the sql together.
-        $sql = Gdn::sql()
+        $sql = $this->SQL
+            ->select('cm.Body', "match (%s) against(:search1 IN BOOLEAN MODE)", 'Relevance')
             ->select('cm.MessageID as PrimaryID, c.Subject as Title, cm.Body as Summary, cm.Format')
-            ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", "concat", 'Url')
+            ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", 'concat', 'Url')
             ->select('cm.DateInserted')
             ->select('cm.InsertUserID as UserID')
             ->select("'Message'", '', 'RecordType')
             ->from('ConversationMessage cm')
             ->join('Conversation c', 'c.ConversationID = cm.ConversationID')
+            ->where("match(cm.Body) against (:search2  IN BOOLEAN MODE)", null, false, false)
             ->orderBy('cm.DateInserted', 'desc')
             ->limit($limit, $offset)
             ->getSelect();
 
-        if ($this->_SearchMode == 'like') {
-            $search = '%'.$search.'%';
-        }
-decho($search);
-        foreach ($this->_Parameters as $key => $value) {
-            $this->_Parameters[$key] = $search;
-        }
-        $parameters = $this->_Parameters;
-        $this->reset();
-        $this->SQL->reset();
-decho($sql);
-decho($parameters);
+        $parameters = [':search1' => $search, ':search2' => $search];
+        $this->SQL->namedParameters($parameters);
+        $result = $this->SQL->query($sql)->resultArray();
 
-        $result = $this->Database->query($sql, $parameters)->resultArray();
-
-        // Transform Body TO Summary.
+        // Transform Body To Summary.
         foreach ($result as $key => $value) {
             if (isset($value['Summary'])) {
                 $result[$key]['Summary'] = condense(Gdn_Format::to($value['Summary'], $value['Format']));
