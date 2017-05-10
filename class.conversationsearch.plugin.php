@@ -142,7 +142,7 @@ class ConversationSearchPlugin extends Gdn_Plugin {
 
         // $searchModel = new SearchModel();
         $searchModel = new ConversationSearchModel();
-        $searchModel->addSearch($this->conversationSql($searchModel));
+        // $searchModel->addSearch($this->conversationSql($searchModel));
 
         $mode = val('Mode', $formValues);
         if ($mode) {

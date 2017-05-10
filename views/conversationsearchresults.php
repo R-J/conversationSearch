@@ -7,36 +7,36 @@ if (count($results) == 0) {
 } else {
 ?>
     <ol id="search-results" class="DataList DataList-Search">
-        <?php foreach ($results as $result): ?>
-            <li class="Item Item-Search">
-                <h3><?= anchor(htmlspecialchars($result['Title']), $result['Url']); ?></h3>
-                <div class="Item-Body Media">
-                    <?php
-                    $Photo = userPhoto($result, array('LinkClass' => 'Img'));
-                    if ($Photo) {
-                        echo $Photo;
-                    }
-                    ?>
-                    <div class="Media-Body">
-                        <div class="Meta">
-                            <?php
-                            echo ' <span class="MItem-Author">'.
-                                sprintf(t('by %s'), userAnchor($result)).
-                                '</span>';
+    <?php foreach ($results as $result): ?>
+        <li class="Item Item-Search">
+            <h3><?= anchor(htmlspecialchars($result['Title']), $result['Url']); ?></h3>
+            <div class="Item-Body Media">
+                <?php
+                $Photo = userPhoto($result, array('LinkClass' => 'Img'));
+                if ($Photo) {
+                    echo $Photo;
+                }
+                ?>
+                <div class="Media-Body">
+                    <div class="Meta">
+                        <?php
+                        echo ' <span class="MItem-Author">'.
+                            sprintf(t('by %s'), userAnchor($result)).
+                            '</span>';
 
-                            echo Bullet(' ');
-                            echo ' <span class="MItem-DateInserted">'.
-                                Gdn_Format::date($result['DateInserted'], 'html').
-                                '</span> ';
-                            ?>
-                        </div>
-                        <div class="Summary">
-                            <?php echo $result['Summary']; ?>
-                        </div>
+                        echo Bullet(' ');
+                        echo ' <span class="MItem-DateInserted">'.
+                            Gdn_Format::date($result['DateInserted'], 'html').
+                            '</span> ';
+                        ?>
+                    </div>
+                    <div class="Summary">
+                        <?php echo $result['Summary']; ?>
                     </div>
                 </div>
-            </li>
-        <?php endforeach; ?>
+            </div>
+        </li>
+    <?php endforeach; ?>
     </ol>
 
 <?php

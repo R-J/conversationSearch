@@ -4,88 +4,79 @@ class ConversationSearchModel extends SearchModel {
     /**
      *
      *
-     * @param $Search
-     * @param int $Offset
-     * @param int $Limit
+     * @param $search
+     * @param int $offset
+     * @param int $limit
      * @return array|null
      * @throws Exception
      */
-    public function search($Search, $Offset = 0, $Limit = 20) {
+    public function search($search, $offset = 0, $limit = 20) {
         // If there are no searches then return an empty array.
-        if (trim($Search) == '') {
-            return array();
+        if (trim($search) == '') { // || count($this->_SearchSql) == 0) {
+            return [];
         }
 
-        // Figure out the exact search mode.
-        if ($this->ForceSearchMode) {
-            $SearchMode = $this->ForceSearchMode;
+        if (strlen($search) <= 4) {
+            $searchMode = 'like';
         } else {
-            $SearchMode = strtolower(c('Garden.Search.Mode', 'matchboolean'));
-        }
-
-        if ($SearchMode == 'matchboolean') {
-            if (strpos($Search, '+') !== false || strpos($Search, '-') !== false) {
-                $SearchMode = 'boolean';
+            // Figure out the exact search mode.
+            if ($this->ForceSearchMode) {
+                $searchMode = $this->ForceSearchMode;
             } else {
-                $SearchMode = 'match';
+                $searchMode = strtolower(c('Garden.Search.Mode', 'matchboolean'));
             }
-        } else {
-            $this->_SearchMode = $SearchMode;
-        }
 
-        if ($ForceDatabaseEngine = c('Database.ForceStorageEngine')) {
-            if (strcasecmp($ForceDatabaseEngine, 'myisam') != 0) {
-                $SearchMode = 'like';
+            if ($searchMode == 'matchboolean') {
+                if (strpos($search, '+') !== false || strpos($search, '-') !== false) {
+                    $searchMode = 'boolean';
+                } else {
+                    $searchMode = 'match';
+                }
+            }
+
+            if ($ForceDatabaseEngine = c('Database.ForceStorageEngine')) {
+                if (strcasecmp($ForceDatabaseEngine, 'myisam') != 0) {
+                    $searchMode = 'like';
+                }
             }
         }
-
-        if (strlen($Search) <= 4) {
-            $SearchMode = 'like';
-        }
-
-        $this->_SearchMode = $SearchMode;
-
-        if (count($this->_SearchSql) == 0) {
-            return array();
-        }
+        $this->_SearchMode = $searchMode;
 
         // Perform the search by unioning all of the sql together.
-        $Sql = $this->SQL
-            ->select()
-            ->from('_TBL_ s')
-            ->orderBy('s.DateInserted', 'desc')
-            ->limit($Limit, $Offset)
+        $sql = Gdn::sql()
+            ->select('cm.MessageID as PrimaryID, c.Subject as Title, cm.Body as Summary, cm.Format')
+            ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", "concat", 'Url')
+            ->select('cm.DateInserted')
+            ->select('cm.InsertUserID as UserID')
+            ->select("'Message'", '', 'RecordType')
+            ->from('ConversationMessage cm')
+            ->join('Conversation c', 'c.ConversationID = cm.ConversationID')
+            ->orderBy('cm.DateInserted', 'desc')
+            ->limit($limit, $offset)
             ->getSelect();
 
-        $Sql = str_replace($this->Database->DatabasePrefix.'_TBL_', "(\n".implode("\nunion all\n", $this->_SearchSql)."\n)", $Sql);
-
         if ($this->_SearchMode == 'like') {
-            $Search = '%'.$Search.'%';
+            $search = '%'.$search.'%';
         }
-
-        foreach ($this->_Parameters as $Key => $Value) {
-            $this->_Parameters[$Key] = $Search;
+decho($search);
+        foreach ($this->_Parameters as $key => $value) {
+            $this->_Parameters[$key] = $search;
         }
-
-        $Parameters = $this->_Parameters;
+        $parameters = $this->_Parameters;
         $this->reset();
         $this->SQL->reset();
-        $Result = $this->Database->query($Sql, $Parameters)->resultArray();
+decho($sql);
+decho($parameters);
 
-        foreach ($Result as $Key => $Value) {
-            if (isset($Value['Summary'])) {
-                $Value['Summary'] = condense(Gdn_Format::to($Value['Summary'], $Value['Format']));
-                $Result[$Key] = $Value;
-            }
+        $result = $this->Database->query($sql, $parameters)->resultArray();
 
-            switch ($Value['RecordType']) {
-                case 'Discussion':
-                    $Discussion = arrayTranslate($Value, array('PrimaryID' => 'DiscussionID', 'Title' => 'Name', 'CategoryID'));
-                    $Result[$Key]['Url'] = discussionUrl($Discussion, 1);
-                    break;
+        // Transform Body TO Summary.
+        foreach ($result as $key => $value) {
+            if (isset($value['Summary'])) {
+                $result[$key]['Summary'] = condense(Gdn_Format::to($value['Summary'], $value['Format']));
             }
         }
 
-        return $Result;
+        return $result;
     }
 }
