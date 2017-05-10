@@ -160,6 +160,7 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         }
 
         $sender->setData('Results', $resultSet);
+        $sender->setData('Search',  $search);
 
         /*
         // Build a pager

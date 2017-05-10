@@ -12,10 +12,13 @@
 
 <?php
 
-decho($this->data('Results'));
-
 /*
 Ignore mine [ ]
 From Users [____________]
 From [_____] To [____]
  */
+
+$search = $this->data('Search', '');
+if ($search != '') {
+    include __DIR__.'/conversationsearchresults.php';
+}
