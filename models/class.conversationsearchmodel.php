@@ -13,6 +13,9 @@ class ConversationSearchModel extends SearchModel { // Gdn_Pluggable {
     /** @var null|integer If checkPermission is true, restrict to this user. Session user will be used if this value isn't set */
     public $conversationUserID = null;
 
+    /** @var boolean Enable searching in unread conversations. */
+    public $searchUnread = false;
+
     /**
      * Class constructor.
      *
@@ -61,6 +64,17 @@ class ConversationSearchModel extends SearchModel { // Gdn_Pluggable {
             $this->SQL->where('uc.UserID', intval($this->conversationUserID));
         }
 
+        // Allow searching in unread conversations.
+        // Should be a) accessible based on role and b)
+        if (
+            c('conversationSearch.SearchUnread', false) == false ||
+            $this->searchUnread == false
+        ) {
+            $this->SQL
+                ->where('uc.DateLastViewed is not null')
+                ->where('cm.MessageID <=', 'uc.LastMessageID', true, false);
+        }
+
         // Build the search sql.
         $sql = $this->SQL
             ->select('cm.Body', "match (%s) against (:search1 in boolean mode)", 'Relevance')
@@ -74,9 +88,7 @@ class ConversationSearchModel extends SearchModel { // Gdn_Pluggable {
             ->join('Conversation c', 'cm.ConversationID = c.ConversationID', 'left outer')
             ->join('UserConversation uc', 'uc.ConversationID = cm.ConversationID', 'left outer')
             ->join('User u', 'cm.InsertUserID = u.UserID', 'left outer')
-            ->where('uc.Deleted', 0)
-            ->where('uc.DateLastViewed is not null')
-            ->where('cm.MessageID <=', 'uc.LastMessageID', true, false)
+            ->where('uc.Deleted', 0) // Conversations which have been left cannot be searched
             ->where("match(cm.Body) against (:search2 in boolean mode)", null, false, false)
             ->orderBy('cm.DateInserted', 'desc')
             ->limit($limit, $offset)

@@ -2,7 +2,7 @@
 $PluginInfo['conversationSearch'] = [
     'Name' => 'Conversation Search',
     'Description' => 'Allows searching in conversations.',
-    'Version' => '0.1.0',
+    'Version' => '0.0.9',
     'RequiredApplications' => [
         'Vanilla' => '>= 2.3',
         'Conversations' => '>= 2.3'
@@ -142,7 +142,10 @@ class ConversationSearchPlugin extends Gdn_Plugin {
 
         // $searchModel = new SearchModel();
         $searchModel = new ConversationSearchModel();
-        // $searchModel->addSearch($this->conversationSql($searchModel));
+/*
+saveToConfig('conversationSearch.SearchUnread', true, false);
+$searchModel->searchUnread = true;
+*/
 
         $mode = val('Mode', $formValues);
         if ($mode) {
