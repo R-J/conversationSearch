@@ -15,10 +15,21 @@ $PluginInfo['conversationSearch'] = [
     'License' => 'MIT'
 ];
 
+/**
+ * Possible enhancements ("todos")
+ * - make list entries click targets
+ * - enhance module to show an additional "search in this conversation" button when inside a conversation
+ * - allow filtering by author and date
+ * - enclose subject in search (maybe with dropdown: search in subject, body, both). Needs uncommenting in structure()!!!
+ * - allow optional searching in unread messages
+ * - allow searching in unread messages only for some roles
+ */
+
 class ConversationSearchPlugin extends Gdn_Plugin {
     /**
-     * [setup description]
-     * @return [type] [description]
+     * Init db changes and config values.
+     *
+     * @return void.
      */
     public function setup() {
         $this->structure();
@@ -29,15 +40,28 @@ class ConversationSearchPlugin extends Gdn_Plugin {
     }
 
     /**
-     * [structure description]
-     * @return [type] [description]
+     * Add fulltext index to ConversationMessage and Subject.
+     *
+     * Adding fulltext keys isn't easy with Vanilla, so instead of using a
+     * simple statement done with the query builder, raw sql needs to be used.
+     * This implementation should work, but if the plugin isn't working as
+     * expected, that might be the cause for the problems.
+     *
+     * Searching in Subject isn't yet implemented. As soon as searching in
+     * Subject should be implemented, the line in the tables array must be
+     * un-commented!!!
+     *
+     * @return void.
      */
     public function structure() {
         $versionInfo = explode('.', Gdn::sql()->version());
         $px = Gdn::database()->DatabasePrefix;
 
         $tables = [
-            ['Name' => 'Conversation', 'FulltextColumn' => 'Subject'],
+            // Searching in Subject is not implemented by now.
+            // The line needs to be un-commented if that feature should be
+            // implemented!!!
+            // ['Name' => 'Conversation', 'FulltextColumn' => 'Subject'],
             ['Name' => 'ConversationMessage', 'FulltextColumn' => 'Body']
         ];
 
@@ -88,9 +112,26 @@ class ConversationSearchPlugin extends Gdn_Plugin {
     }
 
     /**
-     * [messagesController_render_before description]
-     * @param  [type] $sender [description]
-     * @return [type]         [description]
+     * Settings screen.
+     *
+     * Placeholder. Nor sure if this would ever be needed...
+     * @param SettingsController $sender Instance of the calling class.
+     *
+     * @return void.
+     */
+    public function settingsController_conversationSearch_create($sender) {
+        throw notFoundException();
+        // conversationSearch.PerPage
+        // conversationSearch.SearchUnread => use roles for this!!!
+    }
+
+
+    /**
+     * Add module to messages controller.
+     *
+     * @param MessagesController $sender Instance of the calling class.
+     *
+     * @return void.
      */
     public function messagesController_render_before($sender) {
         // Don't show module if we are already on the search page.
@@ -102,12 +143,15 @@ class ConversationSearchPlugin extends Gdn_Plugin {
     }
 
     /**
-     * [messagesController_search_create description]
-     * @param  [type] $sender [description]
-     * @param  [type] $args   [description]
-     * @return [type]         [description]
+     * Conversation search page.
+     *
+     * Shows search bar and search results.
+     *
+     * @param MessagesController $sender Instance of the calling class.
+     *
+     * @return void.
      */
-    public function messagesController_search_create($sender, $args) {
+    public function messagesController_search_create($sender) {
         Gdn_Theme::section('Conversation');
 
         // Only available for logged in users.
@@ -155,41 +199,5 @@ $searchModel->searchUnread = true;
 
         // Render view
         $sender->render();
-    }
-
-    /**
-     * [conversationSql description]
-     * @param  [type]  $searchModel [description]
-     * @param  boolean $addMatch    [description]
-     * @return [type]               [description]
-     */
-    public function conversationSql($searchModel, $addMatch = true) {
-        // Restrict to own conversations!
-        if ($addMatch) {
-            // Build search part of query
-            $searchModel->addMatchSql($searchModel->SQL, 'cm.Body', 'cm.DateInserted');
-        }
-
-        // Build base query
-        $searchModel->SQL
-            ->select('cm.MessageID as PrimaryID, c.Subject as Title, cm.Body as Summary, cm.Format')
-            ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", "concat", 'Url')
-            ->select('cm.DateInserted')
-            ->select('cm.InsertUserID as UserID')
-            ->select("'Message'", '', 'RecordType')
-            ->from('ConversationMessage cm')
-            ->join('Conversation c', 'c.ConversationID = cm.ConversationID');
-
-        if ($addMatch) {
-            // Exectute query
-            $result = $searchModel->SQL->getSelect();
-
-            // Unset SQL
-            $searchModel->SQL->reset();
-        } else {
-            $result = $searchModel->SQL;
-        }
-
-        return $result;
     }
 }
