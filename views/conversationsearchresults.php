@@ -1,11 +1,11 @@
 <?php defined('APPLICATION') or die;
 
 $results = $this->data('Results');
-
-if (count($results) == 0) {
-    echo '<p class="NoResults">', sprintf(t('No results for %s.', 'No results for <b>%s</b>.'), $search), '</p>';
-} else {
+$resultCount = $this->data('ResultCount');
 ?>
+<?php if ($resultCount == 0): ?>
+    <p class="NoResults"><?php printf(t('No results for %s.', 'No results for <b>%s</b>.'), $search); ?></p>
+<?php else: ?>
     <ol id="search-results" class="DataList DataList-Search">
     <?php foreach ($results as $result): ?>
         <li class="Item Item-Search">
@@ -38,17 +38,10 @@ if (count($results) == 0) {
         </li>
     <?php endforeach; ?>
     </ol>
-
-<?php
-echo '<div class="PageControls Bottom">';
-
-$RecordCount = $this->data('RecordCount');
-if ($RecordCount) {
-    echo '<span class="Gloss">'.plural($RecordCount, '%s result', '%s results').'</span>';
-}
-
-// PagerModule::write(array('Wrapper' => '<div %1$s>%2$s</div>'));
-
-echo '</div>';
-
-}
+    <div class="PageControls Bottom">
+    <?php if ($resultCount): ?>
+        <!-- <span class="Gloss"><?php echo plural($resultCount, '%s result', '%s results'); ?></span> -->
+        <?php PagerModule::write(array('CurrentRecords' => $resultCount)); ?>
+    <?php endif; ?>
+    </div>
+<?php endif; ?>
