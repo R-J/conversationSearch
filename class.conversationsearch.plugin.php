@@ -2,12 +2,13 @@
 $PluginInfo['conversationSearch'] = [
     'Name' => 'Conversation Search',
     'Description' => 'Allows searching in conversations.',
-    'Version' => '0.0.9',
+    'Version' => '0.1.0',
     'RequiredApplications' => [
         'Vanilla' => '>= 2.3',
         'Conversations' => '>= 2.3'
     ],
     'SettingsPermission' => 'Garden.Settings.Manage',
+    'SettingsUrl' => 'settings/conversationsearch',
     'MobileFriendly' => true,
     'HasLocale' => true,
     'Author' => 'Robin Jurinka',
@@ -17,6 +18,7 @@ $PluginInfo['conversationSearch'] = [
 
 /**
  * Possible enhancements ("todos")
+ * - settings page is buggy for 2.4 beta
  * - make list entries click targets
  * - enhance module to show an additional "search in this conversation" button when inside a conversation
  * - allow filtering by author and date
@@ -120,7 +122,14 @@ class ConversationSearchPlugin extends Gdn_Plugin {
      * @return void.
      */
     public function settingsController_conversationSearch_create($sender) {
-        throw notFoundException();
+        $sender->permission('Garden.Settings.Manage');
+        if (method_exists($sender, 'setHighlightRoute')) {
+            $sender->setHighlightRoute('settings/plugins');
+        } else {
+            $sender->addSideMenu('settings/plugins');
+        }
+        $sender->setData('Title', t('This ain\'t no Settings Page...'));
+        $sender->render('settings', '', 'plugins/conversationSearch');
         // conversationSearch.PerPage
         // conversationSearch.SearchUnread => use roles for this!!!
     }
