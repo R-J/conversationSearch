@@ -16,6 +16,7 @@
 Ignore mine [ ]
 From Users [____________]
 From [_____] To [____]
+Search in Unread
  */
 
 $search = $this->data('Search', '');

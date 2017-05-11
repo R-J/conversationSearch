@@ -9,7 +9,15 @@ $resultCount = $this->data('ResultCount');
     <ol id="search-results" class="DataList DataList-Search">
     <?php foreach ($results as $result): ?>
         <li class="Item Item-Search">
-            <h3><?= anchor(htmlspecialchars($result['Title']), $result['Url']); ?></h3>
+            <?php
+                if ($result['Title'] == '') {
+                    $date = Gdn_Format::date($result['DateInserted'], t('conversationSearch.NoSubject.DateFormat', t('Date.DefaultDateTimeFormat')));
+                    $subject = sprintf(t('conversationSearch.NoSubject.Text', '<Message written on %2$s, no subject>'), $result['Name'], $date);
+                } else {
+                    $subject = $result['Title'];
+                }
+            ?>
+            <h3><?= anchor(htmlspecialchars($subject), $result['Url']); ?></h3>
             <div class="Item-Body Media">
                 <?php
                 $Photo = userPhoto($result, array('LinkClass' => 'Img'));
@@ -24,7 +32,7 @@ $resultCount = $this->data('ResultCount');
                             sprintf(t('by %s'), userAnchor($result)).
                             '</span>';
 
-                        echo Bullet(' ');
+                        echo bullet(' ');
                         echo ' <span class="MItem-DateInserted">'.
                             Gdn_Format::date($result['DateInserted'], 'html').
                             '</span> ';

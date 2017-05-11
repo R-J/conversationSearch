@@ -22,6 +22,10 @@ class ConversationSearchPlugin extends Gdn_Plugin {
      */
     public function setup() {
         $this->structure();
+        touchConfig(
+            'conversationSearch.PerPage',
+            c('Garden.Search.PerPage', 20)
+        );
     }
 
     /**
@@ -67,9 +71,6 @@ class ConversationSearchPlugin extends Gdn_Plugin {
                 Gdn::structure()->query($sql);
             }
         }
-
-
-        return;
         /**
          * The Easiest way isn't working because InnoDBs fulltext
          * capabilities are not supported  yet.
@@ -119,16 +120,6 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         $sender->addBreadcrumb('Search', '/messages/search');
         $sender->View = $sender->fetchViewLocation('conversationsearch', '', 'plugins/conversationSearch');
 
-        /*
-        // Deliver json data if necessary
-        if ($sender->deliveryType() != DELIVERY_TYPE_ALL) {
-            $sender->setJson('LessRow', $sender->Pager->toString('less'));
-            $sender->setJson('MoreRow', $sender->Pager->toString('more'));
-            $sender->View = 'conversationsearch';
-        }
-        */
-
-
         $search = $sender->Request->getValue('Search', '');
         if ($search == '') {
             $sender->render();
@@ -136,7 +127,7 @@ class ConversationSearchPlugin extends Gdn_Plugin {
 
         // get only a subset of results.
         $page = $sender->Request->getValue('Page', '');
-        list($offset, $limit) = offsetLimit($page, c('conversationSearch.PerPage', 6));
+        list($offset, $limit) = offsetLimit($page, c('conversationSearch.PerPage', 20));
         $sender->setData('_Limit', $limit);
 
         // $searchModel = new SearchModel();
