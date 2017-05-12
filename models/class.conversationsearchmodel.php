@@ -1,38 +1,20 @@
 <?php
 
-class ConversationSearchModel extends SearchModel { // Gdn_Pluggable {
+class ConversationSearchModel extends Gdn_Pluggable { // Gdn_Pluggable {
     /**  @var Gdn_Database Database object. */
     public $Database;
 
     /** @var Gdn_SQLDriver Contains the sql driver for the object. */
     public $SQL;
 
-    /** @var boolean Restrict results to the conversations of one user */
-    public $checkPermission = true;
-
-    /** @var null|integer If checkPermission is true, restrict to this user. Session user will be used if this value isn't set */
-    public $conversationUserID = null;
-
-    /** @var boolean Enable searching in unread conversations. */
-    public $searchUnread = false;
-
     /**
      * Class constructor.
      *
-     * @param boolean $checkPermission Restrict results based on user.
-     * @param null|integer $conversationUserID The user to use for restriction.
-     *
      * @return  void.
      */
-    public function __construct($checkPermission = true, $conversationUserID = null) {
-        // $this->Database = Gdn::database();
-        // $this->SQL = $this->Database->sql();
-
-        $this->checkPermission = $checkPermission;
-        if ($conversationUserID === null) {
-            $conversationUserID = Gdn::session()->UserID;
-        }
-        $this->conversationUserID = $conversationUserID;
+    public function __construct() {
+        $this->Database = Gdn::database();
+        $this->SQL = $this->Database->sql();
 
         parent::__construct();
     }
@@ -45,10 +27,15 @@ class ConversationSearchModel extends SearchModel { // Gdn_Pluggable {
      * @param string $search The string to look up.
      * @param integer $offset The offset to start from (for pagination).
      * @param integer $limit The limit of results (for pagination).
+     * @param array $filter Array with filter columns and criteria. Possible
+     *   values by now:
+     *   integer ID: a ConversationID
+     *   integer|false userID: a conversations participant user id, defaults to
+     *     session user. Using "false" will skip user restriction.
      *
      * @return array Search result.
      */
-    public function search($search, $offset = 0, $limit = 20) {
+    public function search($search, $offset = 0, $limit = 20, $filter = []) {
         // If a third party plugin wants to take influence on the source,
         // this would be a possibility to change the search string.
         // $this->EventArguments['Search'] = &$Search;
@@ -59,24 +46,22 @@ class ConversationSearchModel extends SearchModel { // Gdn_Pluggable {
             return [];
         }
 
-        // Optionally restrict results to one user.
-        if ($this->checkPermission != false) {
-            $this->SQL->where('uc.UserID', intval($this->conversationUserID));
+        $filter = array_change_key_case($filter);
+
+        // Filter: by user
+        $userID = val('userid', $filter, Gdn::session()->UserID);
+        if ($userID !== false) {
+            $this->SQL->where('uc.UserID', $userID);
         }
 
-        // Allow searching in unread conversations.
-        // Should be a) accessible based on role and b)
-        if (
-            c('conversationSearch.SearchUnread', false) == false ||
-            $this->searchUnread == false
-        ) {
-            $this->SQL
-                ->where('uc.DateLastViewed is not null')
-                ->where('cm.MessageID <=', 'uc.LastMessageID', true, false);
+        // Filter: by id
+        if (array_key_exists('id', $filter) && $filter['id'] > 0) {
+            $this->SQL->where('c.ConversationID', $filter['id']);
         }
 
         // Build the search sql.
         $sql = $this->SQL
+            ->distinct()
             ->select('cm.Body', "match (%s) against (:search1 in boolean mode)", 'Relevance')
             ->select('cm.MessageID as PrimaryID, c.Subject as Title, cm.Body as Summary, cm.Format')
             ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", 'concat', 'Url')

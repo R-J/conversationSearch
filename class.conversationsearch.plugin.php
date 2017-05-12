@@ -2,7 +2,7 @@
 $PluginInfo['conversationSearch'] = [
     'Name' => 'Conversation Search',
     'Description' => 'Allows searching in conversations.',
-    'Version' => '0.1.0',
+    'Version' => '0.2.0',
     'RequiredApplications' => [
         'Vanilla' => '>= 2.3',
         'Conversations' => '>= 2.3'
@@ -19,12 +19,9 @@ $PluginInfo['conversationSearch'] = [
 /**
  * Possible enhancements ("todos")
  * - settings page is buggy for 2.4 beta
- * - make list entries click targets
- * - enhance module to show an additional "search in this conversation" button when inside a conversation
  * - allow filtering by author and date
  * - enclose subject in search (maybe with dropdown: search in subject, body, both). Needs uncommenting in structure()!!!
- * - allow optional searching in unread messages
- * - allow searching in unread messages only for some roles
+ * - make list entries click targets (fuck CSS, I think I give up...)
  */
 
 class ConversationSearchPlugin extends Gdn_Plugin {
@@ -131,7 +128,6 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         $sender->setData('Title', t('This ain\'t no Settings Page...'));
         $sender->render('settings', '', 'plugins/conversationSearch');
         // conversationSearch.PerPage
-        // conversationSearch.SearchUnread => use roles for this!!!
     }
 
 
@@ -148,6 +144,7 @@ class ConversationSearchPlugin extends Gdn_Plugin {
             return;
         }
         $conversationSearchModule = new ConversationSearchModule();
+        $conversationSearchModule->conversationID = val('ConversationID', $sender->Conversation, 0);
         $sender->addModule($conversationSearchModule);
     }
 
@@ -183,16 +180,13 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         list($offset, $limit) = offsetLimit($page, c('conversationSearch.PerPage', 20));
         $sender->setData('_Limit', $limit);
 
+        $filter['ID'] = $sender->Request->getValue('ID', 0);
+
         // $searchModel = new SearchModel();
         $searchModel = new ConversationSearchModel();
-/*
-// This would be needed for allowing users to search in unread messages
-saveToConfig('conversationSearch.SearchUnread', true, false);
-$searchModel->searchUnread = true;
-*/
 
         try {
-            $resultSet = $searchModel->search($search, $offset, $limit);
+            $resultSet = $searchModel->search($search, $offset, $limit, $filter);
         } catch (Gdn_UserException $ex) {
             $sender->Form->addError($ex);
             $resultSet = [];
