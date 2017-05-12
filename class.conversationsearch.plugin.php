@@ -183,10 +183,11 @@ class ConversationSearchPlugin extends Gdn_Plugin {
         $filter['ID'] = $sender->Request->getValue('ID', 0);
 
         // $searchModel = new SearchModel();
-        $searchModel = new ConversationSearchModel();
+        // $searchModel = new ConversationSearchModel();
 
         try {
-            $resultSet = $searchModel->search($search, $offset, $limit, $filter);
+            // $resultSet = $searchModel->search($search, $offset, $limit, $filter);
+            $resultSet = $this->search($search, $offset, $limit, $filter);
         } catch (Gdn_UserException $ex) {
             $sender->Form->addError($ex);
             $resultSet = [];
@@ -202,5 +203,84 @@ class ConversationSearchPlugin extends Gdn_Plugin {
 
         // Render view
         $sender->render();
+    }
+
+    /**
+     * Performs a boolean search in conversation messages.
+     *
+     * Allows using "+" (AND) and "-" (NOT) in search.
+     *
+     * @param string $search The string to look up.
+     * @param integer $offset The offset to start from (for pagination).
+     * @param integer $limit The limit of results (for pagination).
+     * @param array $filter Array with filter columns and criteria. Possible
+     *   values by now:
+     *   integer ID: a ConversationID
+     *   integer|false userID: a conversations participant user id, defaults to
+     *     session user. Using "false" will skip user restriction.
+     *
+     * @return array Search result.
+     */
+    private function search($search, $offset = 0, $limit = 20, $filter = []) {
+        // If a third party plugin wants to take influence on the source,
+        // this would be a possibility to change the search string.
+        // $this->EventArguments['Search'] = &$Search;
+        // $this->fireEvent('Search');
+
+        // If there are no searches then return an empty array.
+        if (trim($search) == '') {
+            return [];
+        }
+
+        $filter = array_change_key_case($filter);
+
+        // Filter: by user
+        $userID = val('userid', $filter, Gdn::session()->UserID);
+        if ($userID !== false) {
+            Gdn::sql()->where('uc.UserID', $userID);
+        }
+
+        // Filter: by id
+        if (array_key_exists('id', $filter) && $filter['id'] > 0) {
+            Gdn::sql()->where('c.ConversationID', $filter['id']);
+        }
+
+        // Build the search sql.
+        $sql = Gdn::sql()
+            ->distinct()
+            ->select('cm.Body', "match (%s) against (:search1 in boolean mode)", 'Relevance')
+            ->select('cm.MessageID as PrimaryID, c.Subject as Title, cm.Body as Summary, cm.Format')
+            ->select("'messages/', cm.ConversationID, '#Message_', cm.MessageID", 'concat', 'Url')
+            ->select('cm.DateInserted')
+            ->select('cm.InsertUserID as UserID')
+            ->select("'Message'", '', 'RecordType')
+            ->select('u.Name, u.Photo, u.Email')
+            ->from('ConversationMessage cm')
+            ->join('Conversation c', 'cm.ConversationID = c.ConversationID', 'left outer')
+            ->join('UserConversation uc', 'uc.ConversationID = cm.ConversationID', 'left outer')
+            ->join('User u', 'cm.InsertUserID = u.UserID', 'left outer')
+            ->where('uc.Deleted', 0) // Conversations which have been left cannot be searched
+            ->where("match(cm.Body) against (:search2 in boolean mode)", null, false, false)
+            ->orderBy('cm.DateInserted', 'desc')
+            ->limit($limit, $offset)
+            ->getSelect();
+
+        // Third party plugins would be able to take influence on the query.
+        // $this->EventArguments['Sql'] = &$sql;
+        // $this->fireEvent('AfterBuildSearchQuery');
+
+        // Add two named parameters for our search and execute the query.
+        Gdn::sql()->namedParameter(':search1', false, $search);
+        Gdn::sql()->namedParameter(':search2', false, $search);
+        $result = Gdn::sql()->query($sql)->resultArray();
+
+        // Condense Body To Summary.
+        foreach ($result as $key => $value) {
+            if (isset($value['Summary'])) {
+                $result[$key]['Summary'] = condense(Gdn_Format::to($value['Summary'], $value['Format']));
+            }
+        }
+
+        return $result;
     }
 }
